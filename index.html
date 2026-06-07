@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Brandschutz Consult Pro</title>
+    <meta name="theme-color" content="#ef4444">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Ausgelagertes CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<div class="app-container">
+    <div class="top-header">
+        <h1 onclick="switchView('view-menu')">Brandschutz<span>Pro</span></h1>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button id="installAppBtn" class="btn btn-primary" style="display: flex; padding: 6px 12px; margin: 0; font-size: 12px; width: auto;"><i class="fa-solid fa-download"></i> Download App</button>
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-color);">AUDIT MODUS</div>
+        </div>
+    </div>
+
+    <!-- MAIN MENU -->
+    <div id="view-menu" class="view active">
+        <h2><i class="fa-solid fa-fire-shield"></i> Prüfungsablauf</h2>
+        <div class="menu-grid">
+            <button class="btn btn-dark" onclick="switchView('view-1')"><i class="fa-solid fa-building"></i> 1. Objektdaten</button>
+            <button class="btn btn-dark" onclick="switchView('view-2')"><i class="fa-solid fa-list-check"></i> 2. SBG-Checkliste</button>
+            <button class="btn btn-dark" onclick="switchView('view-3')"><i class="fa-solid fa-camera"></i> 3. Mängel erfassen</button>
+            <button class="btn btn-dark" onclick="switchView('view-gef')"><i class="fa-solid fa-skull-crossbones"></i> 4. Gefahrstoffe (Brandschutz)</button>
+            <button class="btn btn-dark" onclick="switchView('view-4')"><i class="fa-solid fa-layer-group"></i> 5. Mängel-Übersicht <span id="mangel-count" style="margin-left:auto; background:var(--primary); color:white; padding:2px 8px; border-radius:10px; font-size:12px;">0</span></button>
+            <button class="btn btn-primary" onclick="generateReport()" style="margin-top:20px;"><i class="fa-solid fa-file-pdf"></i> 6. Protokoll erstellen</button>
+        </div>
+    </div>
+
+    <!-- VIEW 1: STAMMDATEN -->
+    <div id="view-1" class="view">
+        <h2>1. Objektdaten & Prüfer</h2>
+        <div class="card">
+            <label>Kunde / Objekt:</label>
+            <input type="text" id="obj_name" placeholder="z.B. Logistikzentrum Musterstadt">
+            
+            <label>Straße & Hausnummer:</label>
+            <input type="text" id="obj_str" placeholder="Musterstraße 1">
+            
+            <label>PLZ & Ort:</label>
+            <input type="text" id="obj_ort" placeholder="12345 Musterstadt">
+
+            <div class="input-grid">
+                <div>
+                    <label>Prüfer / Brandschutzbeauftragter:</label>
+                    <input type="text" id="obj_pruefer" placeholder="Name">
+                </div>
+                <div>
+                    <label>Datum der Begehung:</label>
+                    <input type="date" id="obj_datum">
+                </div>
+            </div>
+        </div>
+        <div class="nav-footer">
+            <button class="btn btn-primary" onclick="switchView('view-2')">Weiter zur Checkliste <i class="fa-solid fa-arrow-right"></i></button>
+            <button class="btn btn-dark" onclick="switchView('view-menu')">Zurück zum Menü</button>
+        </div>
+    </div>
+
+    <!-- VIEW 2: SBG CHECKLISTE -->
+    <div id="view-2" class="view">
+        <h2>2. SBG-Checkliste</h2>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Allgemeine Prüfung von Sonderbau- und Brandschutzvorschriften.</p>
+        
+        <div id="chk-container"></div>
+        
+        <div class="nav-footer">
+            <button class="btn btn-primary" onclick="switchView('view-3')">Weiter zu Mängel erfassen <i class="fa-solid fa-arrow-right"></i></button>
+            <button class="btn btn-dark" onclick="switchView('view-1')">Zurück</button>
+        </div>
+    </div>
+
+    <!-- VIEW 3: MÄNGEL ERFASSEN -->
+    <div id="view-3" class="view">
+        <h2>3. Mangel erfassen</h2>
+        <div class="card">
+            <label>Kategorie des Mangels:</label>
+            <select id="m_cat">
+                <option value="baulich">Baulicher Brandschutz (z.B. Brandabschnitte, Türen)</option>
+                <option value="orga">Organisatorischer Brandschutz (z.B. Fluchtpläne, Unterweisung)</option>
+                <option value="anlage">Anlagentechnischer Brandschutz (z.B. BMA, Feuerlöscher, RWA)</option>
+            </select>
+
+            <label>Festgestellter Mangel & Maßnahme:</label>
+            <textarea id="m_text" placeholder="Beispiel: Brandschutztür im EG (Treppenhaus B) durch Keil offen gehalten. Keil wurde umgehend entfernt."></textarea>
+            
+            <div class="media-toolbar">
+                <button class="btn-tool" onclick="startDictation('m_text', this)"><i class="fa-solid fa-microphone"></i> Diktieren</button>
+                <button class="btn-tool" onclick="document.getElementById('m_media').click()"><i class="fa-solid fa-camera"></i> Foto/Video</button>
+            </div>
+            <input type="file" id="m_media" class="file-hidden" accept="image/*,video/*" capture="environment" onchange="handleMediaUpload(event)">
+            
+            <div id="preview_mangel" class="media-preview-box">
+                <button class="remove-media-btn" onclick="removeMedia()"><i class="fa-solid fa-times"></i></button>
+                <div id="preview_mangel_content"></div>
+            </div>
+
+            <div class="input-grid" style="margin-top:16px;">
+                <div><label>Örtlichkeit / Raum:</label><input type="text" id="m_ort" placeholder="z.B. Flur EG"></div>
+                <div><label>Frist bis zur Behebung:</label><input type="date" id="m_frist"></div>
+            </div>
+            
+            <button class="btn btn-primary" style="margin-top:24px;" onclick="addMangel()"><i class="fa-solid fa-plus"></i> In Protokoll übernehmen</button>
+        </div>
+        <div class="nav-footer">
+            <button class="btn btn-dark" onclick="switchView('view-gef')">Weiter zu Gefahrstoffe <i class="fa-solid fa-arrow-right"></i></button>
+            <button class="btn btn-dark" onclick="switchView('view-2')">Zurück</button>
+        </div>
+    </div>
+
+    <!-- VIEW GEFAHRSTOFFE -->
+    <div id="view-gef" class="view">
+        <h2>4. Gefahrstoffe (Brandschutz)</h2>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Brandschutztechnische Erfassung von brennbaren und explosiven Stoffen (TRGS 510).</p>
+        
+        <div class="card">
+            <label>Stoff / Produktname:</label>
+            <input type="text" id="g_name" placeholder="z.B. Aceton, Propangas, Lacke">
+            
+            <div class="input-grid">
+                <div>
+                    <label>Lagermenge:</label>
+                    <input type="text" id="g_menge" placeholder="z.B. 200 Liter, 5 Flaschen">
+                </div>
+                <div>
+                    <label>Lagerort / Bereich:</label>
+                    <input type="text" id="g_ort" placeholder="z.B. Gefahrstofflager, Halle 2">
+                </div>
+            </div>
+
+            <label>Brandverhalten / Einstufung:</label>
+            <select id="g_klasse">
+                <option value="Entzündbar (GHS02)">Entzündbar / Leicht entzündbar (GHS02)</option>
+                <option value="Brandfördernd (GHS03)">Brandfördernd (oxidierend, GHS03)</option>
+                <option value="Explosiv (GHS01)">Explosionsgefährlich (GHS01)</option>
+                <option value="Sonstige brennbare">Sonstige brennbare Stoffe (Öle, Fette)</option>
+            </select>
+
+            <label>Zusammenlagerung beachtet (TRGS 510)?</label>
+            <select id="g_trgs">
+                <option value="ja">Ja - Keine Konflikte</option>
+                <option value="nein">Nein - Unzulässige Zusammenlagerung!</option>
+                <option value="unklar">Ungeprüft / Unklar</option>
+            </select>
+            
+            <label>Besondere Hinweise / Mängel (Brandschutz):</label>
+            <textarea id="g_text" placeholder="z.B. Ex-Schutz Zone nicht gekennzeichnet, unzureichende Lüftung, ungeeigneter Feuerlöscher..."></textarea>
+            
+            <div class="media-toolbar">
+                <button class="btn-tool" onclick="startDictation('g_text', this)"><i class="fa-solid fa-microphone"></i> Diktieren</button>
+            </div>
+            
+            <button class="btn btn-primary" style="margin-top:24px;" onclick="addGefahrstoff()"><i class="fa-solid fa-plus"></i> In Liste übernehmen</button>
+        </div>
+        
+        <div id="gef-liste" style="margin-top: 20px;"></div>
+
+        <div class="nav-footer">
+            <button class="btn btn-dark" onclick="switchView('view-4')">Weiter zur Übersicht <i class="fa-solid fa-arrow-right"></i></button>
+            <button class="btn btn-dark" onclick="switchView('view-3')">Zurück</button>
+        </div>
+    </div>
+
+    <!-- VIEW 4: MÄNGEL ÜBERSICHT -->
+    <div id="view-4" class="view">
+        <h2>5. Aufgenommene Mängel</h2>
+        <div id="mangel-liste"></div>
+        <div class="nav-footer">
+            <button class="btn btn-primary" onclick="generateReport()"><i class="fa-solid fa-file-pdf"></i> Protokoll erstellen</button>
+            <button class="btn btn-dark" onclick="switchView('view-menu')">Zurück zum Menü</button>
+        </div>
+    </div>
+
+    <!-- VIEW 5: REPORT -->
+    <div id="view-report" class="view">
+        <h2 class="no-print"><i class="fa-solid fa-file-lines"></i> Protokoll-Vorschau</h2>
+        <div id="reportOutput"></div>
+        <div class="nav-footer no-print">
+            <button class="btn btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> PDF Speichern / Drucken</button>
+            <button class="btn btn-dark" onclick="switchView('view-menu')">Zurück zum Menü</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ausgelagerte Logik -->
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
