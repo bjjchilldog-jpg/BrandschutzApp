@@ -3,9 +3,21 @@ let tempMediaData = null;
 let mangelList = [];
 let gefList = [];
 let chkAnswers = {};
+let logoBase64 = "";
+
+function loadLogo() {
+    fetch('Dechant Logo.png')
+        .then(response => response.blob())
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = () => { logoBase64 = reader.result; };
+            reader.readAsDataURL(blob);
+        }).catch(e => console.log('Logo load failed', e));
+}
 
 // --- INIT ---
 document.addEventListener("DOMContentLoaded", () => {
+    loadLogo();
     const datumInput = document.getElementById('obj_datum');
     if(datumInput) {
         datumInput.valueAsDate = new Date();
@@ -358,6 +370,148 @@ function generateReport() {
 
     document.getElementById('reportOutput').innerHTML = html;
     switchView('view-report');
+}
+
+// --- WORD EXPORT (.docx) ---
+function exportWord() {
+    if (typeof htmlDocx === 'undefined') {
+        alert("Fehler: Word-Export Bibliothek konnte nicht geladen werden.");
+        return;
+    }
+
+    const objName = document.getElementById('obj_name').value || "Nicht angegeben";
+    const objStr = document.getElementById('obj_str').value || "";
+    const objOrt = document.getElementById('obj_ort').value || "";
+    const dateInput = document.getElementById('obj_datum').value;
+    let dateStr = "Nicht angegeben";
+    if(dateInput) {
+        const dParts = dateInput.split('-');
+        dateStr = `${dParts[2]}.${dParts[1]}.${dParts[0]}`;
+    }
+
+    let wordHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11pt; }
+            td, th { border: 1px solid black; padding: 6px; vertical-align: top; }
+            th { background-color: #f2f2f2; text-align: left; }
+            .header-layout { width: 100%; margin-bottom: 30px; border: none; }
+            .header-layout td { border: none; padding: 0; }
+            .box { border: 1px solid black; padding: 10px; margin-bottom: 5px; font-weight: bold; }
+            .box-title { font-size: 14pt; }
+            .box-date { font-size: 12pt; }
+            .section-header { background-color: #d9d9d9; font-weight: bold; }
+            .red { background-color: red; color: white; text-align: center; font-weight: bold; }
+            .green { background-color: #92d050; color: black; text-align: center; font-weight: bold; }
+            .yellow { background-color: #ffc000; color: black; text-align: center; font-weight: bold; }
+            .info-text { font-size: 9pt; color: #555; }
+        </style>
+    </head>
+    <body>
+        <table class="header-layout">
+            <tr>
+                <td style="width: 60%; vertical-align: bottom;">
+                    <div class="box box-title">Objekt: ${objName}<br>${objStr}<br>${objOrt}</div>
+                    <div class="box box-date">Protokoll- Begehung<br>${dateStr}</div>
+                </td>
+                <td style="width: 40%; text-align: right; font-family: Arial, sans-serif; font-size: 9pt; line-height: 1.3;">
+                    ${logoBase64 ? '<img src="' + logoBase64 + '" style="width:180px; margin-bottom:10px;"><br>' : '<strong>Dechant Sachverständigenbüro</strong><br>'}
+                    Industriestr. 48<br>
+                    93142 Maxhütte-Haidhof<br><br>
+                    Tel: 09471/808534<br>
+                    E-Mail: info@vb-dechant.de
+                </td>
+            </tr>
+        </table>
+
+        <table>
+            <tr>
+                <th style="width: 40%;">Prüfumfang</th>
+                <th style="width: 15%;">Ergebnis</th>
+                <th style="width: 45%;">Bemerkung</th>
+            </tr>
+            <tr>
+                <td colspan="3" class="section-header">1. Checkliste / Prüfungen</td>
+            </tr>
+    `;
+
+    // Checkliste einfügen
+    for (let i = 0; i < chkQuestions.length; i++) {
+        const ans = chkAnswers[i];
+        let colorClass = "yellow";
+        let text = "N/A";
+        if (ans === 'ja') { colorClass = "green"; text = "Ja"; }
+        if (ans === 'nein') { colorClass = "red"; text = "Nein"; }
+        
+        wordHtml += `
+            <tr>
+                <td>${chkQuestions[i]}</td>
+                <td class="${colorClass}">${text}</td>
+                <td></td>
+            </tr>
+        `;
+    }
+
+    // Mängel einfügen
+    if (mangelList.length > 0) {
+        wordHtml += `
+            <tr>
+                <td colspan="3" class="section-header">2. Aufgenommene Mängel / Begehung</td>
+            </tr>
+        `;
+        mangelList.forEach(m => {
+            let mediaHtml = '';
+            if (m.media && m.media.type === 'image') {
+                mediaHtml = `<br><br><img src="${m.media.data}" style="width:300px; border: 1px solid #ccc;">`;
+            }
+            wordHtml += `
+                <tr>
+                    <td><b>Kategorie:</b> ${catNames[m.c].title}<br><br><b>Ort:</b> ${m.o || '-'}<br><b>Frist:</b> ${m.f || '-'}</td>
+                    <td class="red">Mangel</td>
+                    <td><b>Feststellung / Maßnahme:</b><br>${m.t}${mediaHtml}</td>
+                </tr>
+            `;
+        });
+    }
+
+    // Gefahrstoffe einfügen
+    if (gefList.length > 0) {
+        wordHtml += `
+            <tr>
+                <td colspan="3" class="section-header">3. Gefahrstoffe (Brandschutz)</td>
+            </tr>
+        `;
+        gefList.forEach(g => {
+            let trgsClass = g.t === 'ja' ? 'green' : (g.t === 'nein' ? 'red' : 'yellow');
+            let trgsText = g.t === 'ja' ? 'I.O.' : (g.t === 'nein' ? 'Konflikt' : 'Unklar');
+            wordHtml += `
+                <tr>
+                    <td><b>Stoff:</b> ${g.n}<br><b>Klasse:</b> ${g.k}<br><b>Ort:</b> ${g.o || '-'}<br><b>Menge:</b> ${g.m || '-'}</td>
+                    <td class="${trgsClass}">${trgsText}</td>
+                    <td>${g.txt || ''}</td>
+                </tr>
+            `;
+        });
+    }
+
+    wordHtml += `
+        </table>
+        <br>
+        <div style="font-family: Arial, sans-serif; font-size: 10pt;">
+            <b>Die im Ampelsystem bewerteten Anforderungen sind entsprechend ihrer Priorität abzuarbeiten.</b><br>
+            Dadurch wird sichergestellt, dass sicherheitsrelevante Maßnahmen in der notwendigen Reihenfolge umgesetzt werden.
+        </div>
+    </body>
+    </html>
+    `;
+
+    // Konvertiere zu Word-Blob
+    const converted = htmlDocx.asBlob(wordHtml, {orientation: 'portrait', margins: {top: 1440, right: 1440, bottom: 1440, left: 1440}});
+    const safeName = objName.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'bericht';
+    saveAs(converted, `Protokoll_${safeName}_${dateStr}.docx`);
 }
 
 // --- PWA SETUP ---
